@@ -7,7 +7,7 @@
 #include "channel.h"
 #include "common.h"
 
-unsigned verbosity = 0;
+unsigned verbosity = 1;
 
 void usage(int argc, char **argv) {
   fprintf(stderr, "Usage: %s [OPTION]... [FILE]\n", argv[0]);
@@ -19,6 +19,7 @@ void usage(int argc, char **argv) {
   fprintf(stderr, "Options:\n");
   fprintf(stderr, "  -r RATE    sample rate\n");
   fprintf(stderr, "  -a FILE    write channel A to FILE\n");
+  fprintf(stderr, "  -f FILE    write false color channel A to FILE\n");
   fprintf(stderr, "  -b FILE    write channel B to FILE\n");
   fprintf(stderr, "  -n         normalize image intensity\n");
   fprintf(stderr, "  -v         verbose output\n");
@@ -39,6 +40,22 @@ void write_channel(channel *c, unsigned normalize, const char *path) {
   }
 
   channel_to_pgm(c, f);
+
+  fclose(f);
+}
+
+
+void write_false_channel(channel *vis, channel *ir, const char *path) {
+  FILE *f;
+
+  f = fopen(path, "w");
+  if (f == NULL) {
+    perror("fopen()");
+    exit(1);
+  }
+
+  channel_to_pgm_fc(vis, ir, f);
+
   fclose(f);
 }
 
@@ -46,17 +63,21 @@ int main(int argc, char **argv) {
   char c;
   FILE *input = NULL;
   char *ca_file = NULL;
+  char *cf_file = NULL;
   char *cb_file = NULL;
   uint32_t sample_rate = 0;
   unsigned normalize = 0;
   int rv;
 
-  while ((c = getopt(argc, argv, "a:b:r:nv")) != -1) {
+  while ((c = getopt(argc, argv, "a:b:f:r:nv")) != -1) {
     switch (c) {
     case -1:
       break;
     case 'a':
       ca_file = strdup(optarg);
+      break;
+    case 'f':
+      cf_file = strdup(optarg);
       break;
     case 'b':
       cb_file = strdup(optarg);
@@ -111,9 +132,17 @@ int main(int argc, char **argv) {
     write_channel(&d->a, normalize, ca_file);
   }
 
+
   if (cb_file != NULL) {
     write_channel(&d->b, normalize, cb_file);
   }
+
+
+    // TODO add optional false color creation
+    // This may not work if we don't normalize
+    if (cf_file != NULL) {
+      write_false_channel(&d->a, &d->b, cf_file);
+    }
 
   return 0;
 }
