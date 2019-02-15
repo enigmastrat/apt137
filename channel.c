@@ -34,10 +34,90 @@ int channel_to_pgm(channel *c, FILE *f) {
   int i;
   int j;
 
+  // TODO convert to bmp since pbm is inefficient, though pbm is easy.
+  // P2 is for grayscale PBM via ASCII
   fprintf(f, "P2 %d %d %d\n", width, height, 65535);
-  for (i = 0; i < height; i++) {
-    for (j = 0; j < width; j++) {
+
+  // My examples were ending up upside-down. I don't know if that was due to my particular samples.
+  // I'm guessing my datasets just all happen to be south-to-north traversals.
+  for (i = height-1; i >=0 ; i--) {
+    for (j = width-1; j >= 0; j--) {
       fprintf(f, "%d ", c->raw[i * width + j]);
+    }
+
+    fprintf(f, "\n");
+  }
+
+  return 0;
+}
+
+// False color function
+// Including the IR channel allows for better cloud distinction
+// WAV pulled from http://www.fredvandenbosch.nl/satellites_WAV.html worked well
+int channel_to_pgm_fc(channel *c, channel *ir, FILE *f) {
+  int width = CHANNEL_WORDS;
+  int height = c->size / width;
+  int i;
+  int j;
+
+  int val;
+  int irval;
+  int r;
+  int g;
+  int b;
+
+  // P3 is for RGB PBM via ASCII
+  fprintf(f, "P3 %d %d %d\n", width, height, 65535);
+
+  for (i = height-1; i >=0 ; i--) {
+    for (j = width-1; j >= 0; j--) {
+      val = c->raw[i * width + j];
+      irval = ir->raw[i * width + j];
+
+      // False color calc
+      // These values were based off trial and error, not off any particular standard or resource.
+      // TODO improve colors and/or make the limits adjustable from command line
+
+      // Water identification
+      if ( val < 13000 ) {
+        r = (8*256) + val * .2;
+        g = (20*256) + val * 1;
+        b = (50*256) + val * .75;
+      }
+      // Cloud/snow/ice identification
+      // IR channel helps distinguish clouds and water, particularly in arctic areas
+      else if ( irval > 35000 ) {
+        r = (irval+val)/2; // Average the two for a little better cloud distinction
+        g = r;
+        b = r;
+      }
+      // Vegetation identification
+      else if ( val < 27000 ) { // green
+        r = val * .8;
+        g = val * .9;
+        b = val * .6;
+      }
+      // Desert/dirt identification
+      else if ( val <= 35000) { // brown
+        r = val * 1;
+        g = val * .9;
+        b = val * .7;
+      }
+      // Everything else, but this was probably captured by the IR channel above
+      else { // Clouds, snow, and really dry desert
+        r = val;
+        g = val;
+        b = val;
+      }
+
+      if (j < SPACE_WORDS || j >= SPACE_WORDS + CHANNEL_DATA_WORDS) {
+        r = 0;
+        g = 0;
+        b = 0;
+      }
+
+      fprintf(f, "%d %d %d ", r,g,b);
+
     }
 
     fprintf(f, "\n");
@@ -171,7 +251,7 @@ int channel_normalize(channel *c) {
     abort();
   }
 
-  // Limits
+  // Limits - These are the lowest and highest values returned in the wedges
   low = c->wedge[8] - c->wedge_stddev[8]; // Wedge 9
   high = c->wedge[7] + c->wedge_stddev[7]; // Wedge 8
 

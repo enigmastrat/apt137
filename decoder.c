@@ -8,6 +8,7 @@
 #include "decoder.h"
 #include "common.h"
 
+// Next power of 2
 static uint32_t npow2(uint32_t v) {
   v--;
   v |= v >> 1;
@@ -89,7 +90,7 @@ static void _decoder_fill_amplitude_buffer(decoder *s, int size) {
     // Advance to next sample
     prev = cur;
     prev2 = cur2;
-    npos = (npos + 1) & s->mask;
+    npos = (npos + 1) & s->mask; // ? Is this preventing the position from extending past the size in s->len?
   }
 }
 

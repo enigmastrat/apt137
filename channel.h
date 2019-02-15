@@ -28,6 +28,8 @@ uint16_t *channel_alloc_line(channel *c);
 
 int channel_to_pgm(channel *c, FILE *f);
 
+int channel_to_pgm_fc(channel *c, channel *ir, FILE *f);
+
 void channel_compute_wedge_stats(channel *c);
 
 int channel_find_frame_offset(channel *c);

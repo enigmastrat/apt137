@@ -1,3 +1,5 @@
 apt137
 *.o
 *.pgm
+output/*
+output
